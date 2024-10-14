@@ -2,9 +2,49 @@
 title: "P8105 HW3"
 author: "Zeqi Li"
 date: "2024-10-14"
-output: html_document
+output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE}
+library(p8105.datasets)
+library(tidyverse)
 ```
+
+# Problem 1 
+## Load dataset
+```{r load_data_p1}
+data("ny_noaa")
+head(ny_noaa)
+```
+
+The NY NOAA dataset contains `r nrow(ny_noaa)` rows and `r nrow(ny_noaa)` 
+columns. This dataset describes the weather in New York using variables such 
+as date of observation, precipitation, snowfall, snow depth, max temperature, 
+and min temperature.
+
+## Tidy up data
+```{r tidy_data_p1}
+ny_noaa =
+  ny_noaa |> 
+  mutate(tmax = as.numeric(tmax),
+         tmin = as.numeric(tmin)) |> 
+  separate(date, into = c("year", "month", "day"), convert = TRUE)
+```
+To tidy up the dataset, `mutate()` is first applied to convert the `tmax` and 
+`tmin` from `chr` data type to `num` data type. Then, `separate()` is applied 
+to split the `date` variable into `year`, `month`, and `day` columns.
+
+```{r tidy_data_cont}
+na = sum(is.na(ny_noaa))
+
+snow_count = 
+  ny_noaa |> 
+    count(snow) |> 
+    arrange(desc(n))
+```
+The most common values in the dataset is `NA`. There are `r na` 
+`NA` values in this dataset. Another noticeable common value is the 0s in the 
+`snow` column. There are `r pull(snow_count, n)[1]` 0s in that column, mainly 
+because there are many days in a year when there is no snow in New York.
+
+
