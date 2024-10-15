@@ -16,7 +16,6 @@ library(patchwork)
 ## Load dataset
 ```{r load_data_p1}
 data("ny_noaa")
-head(ny_noaa)
 ```
 
 The NY NOAA dataset contains `r nrow(ny_noaa)` rows and `r nrow(ny_noaa)` 
@@ -82,7 +81,9 @@ hex =
   ny_noaa |> 
   ggplot(aes(x = tmin,
              y = tmax)) +
-  geom_hex()
+  geom_hex() +
+  theme(legend.position = "bottom") +
+  viridis::scale_color_viridis(discrete = TRUE)
 
 ridge = 
   ny_noaa |> 
@@ -90,9 +91,7 @@ ridge =
   ggplot(aes(x = snow,
              y = as.factor(year))) +
   geom_density_ridges() + 
-  ylab("year") +
-  theme(legend.position = "bottom") +
-  viridis::scale_color_viridis(discrete = TRUE)
+  ylab("year")
 
 hex + ridge
 ```
@@ -107,3 +106,25 @@ years, for snowfall amount greater than 0 and less than 100. In general,
 snowfall amounts follow a multi-modal distribution, where the amounts peak at 
 around 10, 25, 50, and slightly at 75. This multi-modality is likely because of 
 the conversion of measurements from the imperial system to the metric system.
+
+# Problem 2
+## Load and tidy up data
+```{r load_data_p2, message = FALSE}
+demograph = 
+  read_csv("data/nhanes_covar.csv",
+           skip = 4) |> 
+  janitor::clean_names() |> 
+  drop_na() |> 
+  filter(age > 20) 
+  
+accel = read_csv("data/nhanes_accel.csv") |> 
+  janitor::clean_names()
+```
+## Merge datasets
+```{r merge_data}
+mims = 
+  demograph |> 
+  left_join(accel,
+            by = "seqn")
+```
+
