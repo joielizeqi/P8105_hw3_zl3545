@@ -183,3 +183,12 @@ aggr_mims |>
 
 Comment
 
+# Problem 3
+## Import data
+```{r import_data_p3, message = FALSE}
+jan_20 = read_csv("data/Jan 2020 Citi.csv")
+jan_24 = read_csv("data/Jan 2024 Citi.csv")
+july_20 = read_csv("data/July 2020 Citi.csv")
+july_2024 = read_csv("data/July 2020 Citi.csv")
+```
+
