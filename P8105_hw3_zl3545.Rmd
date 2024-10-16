@@ -10,6 +10,16 @@ library(p8105.datasets)
 library(tidyverse)
 library(ggridges)
 library(patchwork)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 ```
 
 # Problem 1 
@@ -115,7 +125,14 @@ demograph =
            skip = 4) |> 
   janitor::clean_names() |> 
   drop_na() |> 
-  filter(age > 20) 
+  filter(age > 20) |> 
+  mutate(sex = case_match(sex,
+                          1 ~ "male",
+                          2 ~ "female"),
+         education = case_match(education,
+                                1 ~ "less than high school",
+                                2 ~ "high school equivalent",
+                                3 ~ "more than high school"))
   
 accel = read_csv("data/nhanes_accel.csv") |> 
   janitor::clean_names()
@@ -125,6 +142,22 @@ accel = read_csv("data/nhanes_accel.csv") |>
 mims = 
   demograph |> 
   left_join(accel,
-            by = "seqn")
+            by = "seqn") |> 
+  pivot_longer(min1:min1440,
+               names_to = "time",
+               names_prefix = "min",
+               values_to = "mims") |> 
+  mutate(time = as.numeric(time))
+```
+
+## Create table
+```{r table}
+edu_sex_df = 
+  mims |> 
+  count(sex, education) |> 
+  pivot_wider(names_from = "education",
+              values_from = "n")
+
+knitr::kable(edu_sex_df)
 ```
 
