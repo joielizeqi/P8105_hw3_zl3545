@@ -161,3 +161,25 @@ edu_sex_df =
 knitr::kable(edu_sex_df)
 ```
 
+Comment
+
+## Aggregate MIMS data and plot
+```{r aggregate_plot}
+aggr_mims = 
+  mims |> 
+  group_by(seqn, age, sex, education) |> 
+  summarize(mims_per_day = sum(mims))
+
+aggr_mims |> 
+  ggplot(aes(x = age,
+             y = mims_per_day,
+             color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  facet_grid(~ education) +
+  labs(title = "Total MIMS Activity across Age for Different Education Levels") +
+  ylab("total MIMS")
+```
+
+Comment
+
