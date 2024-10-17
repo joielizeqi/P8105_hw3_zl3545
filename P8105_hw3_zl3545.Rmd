@@ -142,53 +142,166 @@ accel = read_csv("data/nhanes_accel.csv") |>
 mims = 
   demograph |> 
   left_join(accel,
-            by = "seqn") |> 
-  pivot_longer(min1:min1440,
-               names_to = "time",
-               names_prefix = "min",
-               values_to = "mims") |> 
-  mutate(time = as.numeric(time))
+            by = "seqn") |>
+  drop_na()
 ```
 
 ## Create table
-```{r table}
+```{r table_p2}
 edu_sex_df = 
   mims |> 
   count(sex, education) |> 
   pivot_wider(names_from = "education",
-              values_from = "n")
+              values_from = "n") |> 
+  relocate("sex",
+           "less than high school",
+           "high school equivalent",
+           "more than high school")
 
-knitr::kable(edu_sex_df)
+knitr::kable(edu_sex_df,
+             caption = "Sex and Education Level Table")
 ```
 
-Comment
+In the categories of "less than high school level" and "more than high school 
+level", there are slightly more women than men. But there are significantly 
+more men than women with a high school equivalent level. 
+
+
+## Plot age distributions
+Visualizing age distribution for men and women in each education level.
+```{r plot_age, message = FALSE}
+mims |> 
+  group_by(age,
+           sex,
+           education) |> 
+  ggplot(aes(x = education,
+             y = age,
+             fill = sex)) +
+  geom_boxplot() +
+  labs(title = "Age Distributions in Men and Women across Education Levels") +
+  xlab("Education Level") + 
+  ylab("Age")
+```
+In the boxplots above, we can see that in the education category "high school equivalent", the median age for women is around 60 and the median age for men 
+is around 50; in the education category "less than high school", the median ages 
+for both men and women are around 60; in the education category "more than high 
+school", the median age for both men and women are around 40. From this 
+observation, we note that younger participants tend to have a higher education 
+level. In addition, the age distributions of men and women in the "high school equivalent" have a more drastic difference than those in the other two categories.
+
 
 ## Aggregate MIMS data and plot
-```{r aggregate_plot}
+```{r aggregate_plot, message = FALSE}
 aggr_mims = 
   mims |> 
-  group_by(seqn, age, sex, education) |> 
-  summarize(mims_per_day = sum(mims))
+  pivot_longer(min1:min1440,
+               names_to = "time", 
+               names_prefix = "min",
+               values_to = "mims") |> 
+  group_by(time, sex, education, mims) |> 
+  mutate(time = as.numeric(time)) |> 
+  summarize(mean_mims = mean(mims))
 
 aggr_mims |> 
-  ggplot(aes(x = age,
-             y = mims_per_day,
+  ggplot(aes(x = time,
+             y = mean_mims,
              color = sex)) +
-  geom_point() +
+  geom_point(alpha = 0.3) +
   geom_smooth(se = FALSE) +
   facet_grid(~ education) +
-  labs(title = "Total MIMS Activity across Age for Different Education Levels") +
-  ylab("total MIMS")
+  labs(title = "Mean MIMS Activity across Age for Different Education Levels") +
+  ylab("Mean MIMS") +
+  xlab("Time")
 ```
 
-Comment
 
 # Problem 3
 ## Import data
 ```{r import_data_p3, message = FALSE}
-jan_20 = read_csv("data/Jan 2020 Citi.csv")
-jan_24 = read_csv("data/Jan 2024 Citi.csv")
-july_20 = read_csv("data/July 2020 Citi.csv")
-july_2024 = read_csv("data/July 2020 Citi.csv")
+jan_20 = read_csv("data/Jan 2020 Citi.csv") |> 
+  mutate(month = "January",
+         year = "2020")
+
+jan_24 = read_csv("data/Jan 2024 Citi.csv") |> 
+  mutate(month = "January",
+         year = "2024")
+
+july_20 = read_csv("data/July 2020 Citi.csv") |> 
+  mutate(month = "July",
+         year = "2020")
+
+july_24 = read_csv("data/July 2024 Citi.csv") |> 
+  mutate(month = "July",
+         year = "2024")
+
+citi = bind_rows(jan_20,
+                 jan_24,
+                 july_20,
+                 july_24)
+```
+
+## Create table
+Table showing total number of rides in each combination of year and month 
+separating casual riders and Citi Bike members.
+```{r table_p3}
+member_casual = 
+  citi |> 
+  group_by(year,
+           month,
+           member_casual) |> 
+  count(member_casual) |> 
+  pivot_wider(names_from = "member_casual",
+              values_from = "n")
+  
+knitr::kable(member_casual,
+             caption = "Total Number of Rides from Casual Riders and Members across
+             Years and Months")
+```
+
+## Top 5 Start Stations
+```{r top_stations}
+top_stations = 
+  july_24 |> 
+  count(start_station_name) |> 
+  arrange(desc(n)) |>
+  head(5)
+
+knitr::kable(top_stations,
+             caption = "Top 5 Start Stations")
+```
+
+## Effect of day of the week, month, and year on median ride durations
+```{r duration_1}
+median_duration = 
+  citi |> 
+  group_by(weekdays, year, month, duration) |> 
+  summarize(median_duration = median(duration)) 
+
+median_duration |> 
+  ggplot(aes(x = weekdays,
+             y = median_duration,
+             fill = month)) + 
+  geom_bar(stat = "identity",
+           position = "dodge") +
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5,
+                                   hjust = 1))  +
+  facet_grid(~ year)
+```
+
+## Effect of month, membership status, and bike type on ride duration
+```{r duration_2}
+bike_type = 
+  citi |> 
+  filter(year == "2024") |> 
+  group_by(rideable_type, month, member_casual, duration)
+    
+
+bike_type |> 
+  ggplot(aes(x = month,
+             y = duration,
+             fill = member_casual)) + 
+  geom_bar(stat = "identity",
+           position = "dodge")
 ```
 
