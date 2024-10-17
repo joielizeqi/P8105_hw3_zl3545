@@ -164,7 +164,7 @@ knitr::kable(edu_sex_df,
 
 In the categories of "less than high school level" and "more than high school 
 level", there are slightly more women than men. But there are significantly 
-more men than women with a high school equivalent level. 
+more men than women with a high school equivalent education level. 
 
 
 ## Plot age distributions
@@ -199,10 +199,40 @@ aggr_mims =
                names_prefix = "min",
                values_to = "mims") |> 
   group_by(time, sex, education, mims) |> 
+  mutate(time = as.numeric(time),
+         median_mims = median(mims))
+
+aggr_mims |> 
+  ggplot(aes(x = time,
+             y = median_mims,
+             color = sex)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(se = FALSE) +
+  facet_grid(~ education) +
+  labs(title = "Median MIMS Activity across Age for Different Education Levels") +
+  ylab("Median MIMS") +
+  xlab("Time")
+```
+From the plot above, we can see that overall, the median MIMS activity for men 
+and women are roughly in the same range. For people with a "more than high school" 
+education level, the median MIMS activities for some women are higher at 8:30am in
+the morning (at around 500th minute), and the median MIMS activities for some men 
+are higher at 8:30pm at night (at around 1250th minute). Besides this, overall, 
+the trend lines and scattered points look roughly similar across education levels.
+
+## Avgerage 24-hour MIMS data and plot
+```{r mean_plot, message = FALSE}
+mean_mims = 
+  mims |> 
+  pivot_longer(min1:min1440,
+               names_to = "time", 
+               names_prefix = "min",
+               values_to = "mims") |> 
+  group_by(time, sex, education, mims) |> 
   mutate(time = as.numeric(time)) |> 
   summarize(mean_mims = mean(mims))
 
-aggr_mims |> 
+mean_mims |> 
   ggplot(aes(x = time,
              y = mean_mims,
              color = sex)) +
@@ -213,7 +243,8 @@ aggr_mims |>
   ylab("Mean MIMS") +
   xlab("Time")
 ```
-
+From the plot above, we can see that overall, the mean MIMS activity for men 
+and women roughly follow the same trend as the median MIMS plot above.
 
 # Problem 3
 ## Import data
@@ -237,8 +268,21 @@ july_24 = read_csv("data/July 2024 Citi.csv") |>
 citi = bind_rows(jan_20,
                  jan_24,
                  july_20,
-                 july_24)
+                 july_24) |> 
+  mutate(weekdays = factor(weekdays,
+                           level = c("Monday",
+                                     "Tuesday",
+                                     "Wednesday",
+                                     "Thursday",
+                                     "Friday",
+                                     "Saturday",
+                                     "Sunday")),
+         year = as.character(year),
+         month = as.character(month))
 ```
+The resulting dataset contains information about `r nrow(citi)-1` CitiBike rides 
+in January 2020, January 2024, July 2020, and July 2024. The variables that describes these rides are `r colnames(citi)`.
+
 
 ## Create table
 Table showing total number of rides in each combination of year and month 
@@ -257,6 +301,9 @@ knitr::kable(member_casual,
              caption = "Total Number of Rides from Casual Riders and Members across
              Years and Months")
 ```
+From the table above, we can see that in general, more there are more rides in 
+July than in January. In addition, there more a lot more users in 2024 than in 
+2020, and more riders became members in 2024.
 
 ## Top 5 Start Stations
 ```{r top_stations}
@@ -264,18 +311,21 @@ top_stations =
   july_24 |> 
   count(start_station_name) |> 
   arrange(desc(n)) |>
-  head(5)
+  head(5) 
 
 knitr::kable(top_stations,
-             caption = "Top 5 Start Stations")
+             caption = "Top 5 Start Stations",
+             col.names = c("Start station",
+                          "Count"))
 ```
 
-## Effect of day of the week, month, and year on median ride durations
-```{r duration_1}
+## Effects on ride duration
+### Day of the week, year, and month
+```{r duration_1, message = FALSE}
 median_duration = 
   citi |> 
   group_by(weekdays, year, month, duration) |> 
-  summarize(median_duration = median(duration)) 
+  summarize(median_duration = median(duration, na.rm = TRUE)) 
 
 median_duration |> 
   ggplot(aes(x = weekdays,
@@ -286,22 +336,38 @@ median_duration |>
   theme(axis.text.x = element_text(angle = 90,
                                    vjust = 0.5,
                                    hjust = 1))  +
-  facet_grid(~ year)
+  facet_grid(~ year) +
+  labs(title = "The Effects of Day of the Week, Month, and Year on Median Ride Duration") +
+  ylab("Median Duration") +
+  xlab("Weekdays")
 ```
+From the side-by-side bar plot above, we can see that in general, the median 
+ride duration in July are longer than those in January. This is possibly 
+because riders want to minimize their time outdoor in the cold weather in 
+January. The effect of year and day of the week are less significant, but we can 
+note that in January 2020, ride durations during weekdays are shorter than 
+that in the same month in 2024; likewise, in January 2024, ride durations during weekends are shorter than that in the same month in 2020.
 
-## Effect of month, membership status, and bike type on ride duration
+
+### Month, membership status, and bike type
 ```{r duration_2}
 bike_type = 
   citi |> 
   filter(year == "2024") |> 
   group_by(rideable_type, month, member_casual, duration)
     
-
 bike_type |> 
   ggplot(aes(x = month,
              y = duration,
              fill = member_casual)) + 
-  geom_bar(stat = "identity",
-           position = "dodge")
+  geom_boxplot() +
+  facet_grid(~ rideable_type) +
+  labs(title = "Effect of Month, Membership Status, and Bike Type on Ride Duration") +
+  ylab("Duration") +
+  xlab("Month")
 ```
-
+From the boxplots above, we can see the the distributions are very clustered 
+around the medians, which are all around 15. There are many outliers at the top 
+of all of boxplots, meaning that some users prefer to ride CitiBike for a much 
+longer duration than typical CitiBike users. We can also note that casual bikers 
+tend to have longer rides than members.
